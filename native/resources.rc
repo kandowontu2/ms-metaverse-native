@@ -1,0 +1,17 @@
+#include <windows.h>
+
+// Optional original MM.EXE gameplay resources. These files are deliberately
+// ignored by Git and are only compiled when METAVERSE_USE_ORIGINAL_PE_RESOURCES
+// is enabled and every expected file was locally extracted.
+160 CURSOR "assets/cursors/160.cur"
+161 CURSOR "assets/cursors/161.cur"
+162 CURSOR "assets/cursors/162.cur"
+163 CURSOR "assets/cursors/163.cur"
+164 CURSOR "assets/cursors/164.cur"
+165 CURSOR "assets/cursors/165.cur"
+166 CURSOR "assets/cursors/166.cur"
+174 CURSOR "assets/cursors/174.cur"
+181 CURSOR "assets/cursors/181.cur"
+
+// Original two-image application icon group 178.
+178 ICON "assets/icons/178.ico"

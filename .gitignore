@@ -1,0 +1,9 @@
+/artifacts/
+/build/
+/dist/
+/extracted/
+/source-media/
+/work/
+/native/assets/
+__pycache__/
+*.pyc

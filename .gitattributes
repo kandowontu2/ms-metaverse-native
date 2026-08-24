@@ -1,0 +1,10 @@
+* text=auto eol=lf
+*.a binary
+*.cur binary
+*.ico binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.avi binary
+*.wav binary

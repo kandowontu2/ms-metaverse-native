@@ -1,0 +1,40 @@
+name: Parity bug
+description: Report behavior that differs from the original game
+title: "[Parity] "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: Do not attach original game files, disc images, or extracted media.
+  - type: input
+    id: version
+    attributes:
+      label: Native port version
+      placeholder: 1.0.0
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Include scene, contestant, controls, and action order.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Original behavior
+      description: Describe what the original game does at the same point.
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Native behavior
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Additional evidence
+      description: Add timestamps, hashes, logs, or screenshots without copyrighted media files.
