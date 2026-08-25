@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.24)
 
-project(ms_metaverse_native VERSION 1.0.0 LANGUAGES CXX)
+project(ms_metaverse_native VERSION 1.0.1 LANGUAGES CXX)
 
 include(CTest)
 

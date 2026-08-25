@@ -1,6 +1,7 @@
-# Ms. Metaverse Native 1.0.0
+# Ms. Metaverse Native 1.0.1
 
-The first complete native Windows release of the offline 1995 FMV game flow.
+This maintenance release fixes retained-screen rendering and ORDER cancellation
+in the complete native Windows port of the offline 1995 FMV game flow.
 
 ## Highlights
 
@@ -15,6 +16,11 @@ The first complete native Windows release of the offline 1995 FMV game flow.
   cutscene boundaries, and judging rules recovered and audited.
 - `Alt+Enter` toggles fullscreen; `Ctrl+Alt+F1` sets the balance to $999999.
 - Physical-disc/copy-protection checks are intentionally removed.
+- ORDER and Weight now reconstruct every retained layer when the native
+  double-buffered painter handles a partial invalidation, preventing black
+  screens after choosing or accepting the first comment.
+- Confirming ORDER's Escape quit prompt now exits instead of unexpectedly
+  advancing to navigation; choosing No leaves the ranking board intact.
 
 ## Required original data
 
@@ -25,7 +31,7 @@ extraction instructions are in the included README.
 
 ## Downloads
 
-- `ms-metaverse-native-v1.0.0-windows-x64.zip`: application and documentation
+- `ms-metaverse-native-v1.0.1-windows-x64.zip`: application and documentation
 - `ffmpeg-8.1.2.tar.xz`: exact corresponding FFmpeg source for the statically
   linked LGPL component
 - `ffmpeg-8.1.2.tar.xz.asc`: FFmpeg's detached signature for that source

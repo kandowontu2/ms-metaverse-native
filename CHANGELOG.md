@@ -2,7 +2,7 @@
 
 All notable project changes are documented here.
 
-## Unreleased
+## 1.0.1 - 2026-08-25
 
 - Fixed the ORDER board turning black after choosing or accepting the first
   comment by rebuilding its retained layers in every double-buffered repaint.
