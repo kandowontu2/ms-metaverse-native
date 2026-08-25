@@ -3718,25 +3718,25 @@ public:
         }
 
         if (scene_ == kWeightScene) {
-            metaverse::CategoryWeightPaintPlan plan;
-            if (host_interstitial_active_) {
-                // MM.EXE's C91 runner is a separate modal window over the
-                // already-painted Weight dialog. Native composites it in this
-                // HWND, so reproduce that retained parent surface explicitly.
-                plan.draw_base = true;
-            } else {
-                plan = metaverse::ConsumeCategoryWeightPaint(
+            if (!host_interstitial_active_) {
+                // Preserve 0x004105bb's dirty-flag side effects. Paint() uses
+                // a newly allocated black back buffer, however, so those
+                // one-shot flags cannot also decide which retained layers are
+                // copied into it: doing so turns every partial invalidation
+                // into a mostly black full-window frame.
+                (void)metaverse::ConsumeCategoryWeightPaint(
                     weight_painter_, weight_pressed_control_
                 );
             }
-            // 0x004105bb consumes dirty layers in this strict order. It checks
-            // only current_gauge, leaving any other gauge flags pending.
-            if (plan.draw_base) {
-                draw_logical_overlay(
-                    bitmap_, bitmap_width_, bitmap_height_, 0, 0
-                );
-            }
-            if (plan.draw_ok) {
+
+            // Reconstruct the complete retained Weight surface in the fresh
+            // back buffer on every WM_PAINT. Win32 clipping still determines
+            // when a paint is requested; this only makes the double-buffered
+            // result equivalent to the original persistent window DC.
+            draw_logical_overlay(
+                bitmap_, bitmap_width_, bitmap_height_, 0, 0
+            );
+            if (weight_ok_pressed_) {
                 draw_logical_overlay(
                     weight_ok_bitmap_,
                     metaverse::kCategoryWeightOkRect.Width(),
@@ -3745,8 +3745,12 @@ public:
                     metaverse::kCategoryWeightOkRect.top
                 );
             }
-            if (plan.control) {
-                const std::size_t control = *plan.control;
+            if (weight_pressed_control_ >= 0 &&
+                static_cast<std::size_t>(weight_pressed_control_) <
+                    weight_control_bitmaps_.size()) {
+                const std::size_t control = static_cast<std::size_t>(
+                    weight_pressed_control_
+                );
                 const auto& rect =
                     metaverse::kCategoryWeightControlRects[control];
                 draw_logical_overlay(
@@ -3757,8 +3761,11 @@ public:
                     rect.top
                 );
             }
-            if (plan.gauge && weight_gauge_visible_[*plan.gauge]) {
-                const std::size_t category = *plan.gauge;
+            for (std::size_t category = 0;
+                 category < weight_gauge_bitmaps_.size(); ++category) {
+                if (!weight_gauge_visible_[category]) {
+                    continue;
+                }
                 draw_logical_overlay(
                     weight_gauge_bitmaps_[category],
                     metaverse::kCategoryWeightGaugeSizes[category].width,
@@ -3908,24 +3915,19 @@ public:
                 DeleteDC(source);
             };
 
-            const bool restore_modal_parent = host_interstitial_active_;
-            metaverse::CommentPaintPlan plan;
-            if (restore_modal_parent) {
-                // C51 is a child modal in MM.EXE. Native composites it in the
-                // owner HWND, so rebuild the already-painted parent surface
-                // beneath each host frame without consuming dirty state.
-                plan.draw_base = true;
-                plan.draw_accept = comment_accept_pressed_;
-                plan.draw_hand = comment_hand_visible_;
-                plan.draw_thermometer = true;
-            } else {
-                plan = metaverse::ConsumeCommentPaint(comment_painter_);
+            if (!host_interstitial_active_) {
+                // Keep the recovered ORDER dirty-flag consumption semantics,
+                // but do not use those flags to populate this frame. Unlike
+                // MM.EXE's persistent window surface, target starts black on
+                // every call, so an incremental layer-only composition loses
+                // every previously painted phrase after the first ACCEPT.
+                (void)metaverse::ConsumeCommentPaint(comment_painter_);
             }
 
-            if (plan.draw_base) {
-                draw_bitmap(bitmap_, 0, 0, false);
-            }
-            if (plan.draw_accept) {
+            // Rebuild the complete retained ORDER board for every paint. This
+            // also keeps the parent intact beneath the in-HWND C51 emulation.
+            draw_bitmap(bitmap_, 0, 0, false);
+            if (comment_accept_pressed_) {
                 draw_bitmap(
                     comment_accept_bitmap_,
                     metaverse::kCommentAcceptLeft,
@@ -3933,20 +3935,8 @@ public:
                     false
                 );
             }
-            if (restore_modal_parent) {
-                for (std::size_t comment = 0;
-                     comment < comment_phrase_bitmaps_.size(); ++comment) {
-                    draw_bitmap(
-                        comment_phrase_bitmaps_[comment],
-                        metaverse::kCommentPhraseLeft,
-                        metaverse::kCommentPhraseTop +
-                            static_cast<int>(comment) *
-                                metaverse::kCommentPhrasePitch,
-                        false
-                    );
-                }
-            } else if (plan.comment) {
-                const std::size_t comment = *plan.comment;
+            for (std::size_t comment = 0;
+                 comment < comment_phrase_bitmaps_.size(); ++comment) {
                 draw_bitmap(
                     comment_phrase_bitmaps_[comment],
                     metaverse::kCommentPhraseLeft,
@@ -3956,7 +3946,7 @@ public:
                     false
                 );
             }
-            if (plan.draw_hand) {
+            if (comment_hand_visible_) {
                 draw_bitmap(
                     comment_hand_bitmap_, metaverse::kCommentHandLeft,
                     metaverse::kCommentHandTop +
@@ -3965,14 +3955,12 @@ public:
                     true
                 );
             }
-            if (plan.draw_thermometer) {
-                draw_bitmap(
-                    comment_thermometer_bitmap_,
-                    metaverse::kCommentThermometerLeft,
-                    metaverse::kCommentThermometerTop,
-                    false
-                );
-            }
+            draw_bitmap(
+                comment_thermometer_bitmap_,
+                metaverse::kCommentThermometerLeft,
+                metaverse::kCommentThermometerTop,
+                false
+            );
 
             const auto draw_rank = [&](std::int32_t comment) {
                 if (comment < 0 || comment >=
@@ -4005,7 +3993,7 @@ public:
                     static_cast<int>(text.size())
                 );
             };
-            if (restore_modal_parent || plan.rank_comment) {
+            if (comment_order_.next_rank < 10) {
                 const int font_height = std::max(
                     12, static_cast<int>(std::lround(20.0 * content_scale))
                 );
@@ -4019,15 +4007,11 @@ public:
                 const COLORREF previous_color = SetTextColor(
                     target, RGB(255, 0, 0)
                 );
-                if (restore_modal_parent) {
-                    for (std::int32_t comment = 0;
-                         comment < static_cast<std::int32_t>(
-                             comment_order_.assigned_rank_by_comment.size()
-                         ); ++comment) {
-                        draw_rank(comment);
-                    }
-                } else {
-                    draw_rank(*plan.rank_comment);
+                for (std::int32_t comment = 0;
+                     comment < static_cast<std::int32_t>(
+                         comment_order_.assigned_rank_by_comment.size()
+                     ); ++comment) {
+                    draw_rank(comment);
                 }
                 SetTextColor(target, previous_color);
                 SetBkMode(target, previous_background);
@@ -7386,10 +7370,8 @@ private:
 
         // Mode 6 is a child modal in MM.EXE, so destroying it exposes an intact
         // owner surface. Native composites that child into the owner HWND.
-        // Weight and ORDER consume retained painter flags one dirty rectangle
-        // at a time; if their continuation paints first, only the gauges or
-        // phrases replace the final host sprite. Rearm and synchronously paint
-        // the complete parent before any continuation can consume those flags.
+        // Rearm the recovered base-painter side effect and synchronously
+        // rebuild the complete retained parent before its continuation runs.
         if (scene_ == kWeightScene) {
             weight_painter_.base_dirty = true;
         } else if (scene_ == kCommentsScene) {

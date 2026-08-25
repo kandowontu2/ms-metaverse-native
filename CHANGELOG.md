@@ -2,6 +2,13 @@
 
 All notable project changes are documented here.
 
+## Unreleased
+
+- Fixed the ORDER board turning black after choosing or accepting the first
+  comment by rebuilding its retained layers in every double-buffered repaint.
+- Applied the same retained-layer correction to Weight arrow and gauge
+  repaints.
+
 ## 1.0.0 - 2026-08-24
 
 - Reimplemented the complete offline Windows game flow as a native x64 Win32
