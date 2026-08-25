@@ -3065,6 +3065,11 @@ public:
                 // 0x00410f5b destroys every Weight-owned wrapper before its
                 // result-one EndDialog returns to the orchestrator's exit path.
                 TearDownWeightDialogResources();
+            } else if (scene_ == kCommentsScene) {
+                // Unlike MM.EXE's misleading result-one continuation, the
+                // native Cancel override is a real exit. Release ORDER's
+                // retained bitmaps and any host state before closing.
+                TearDownOrderDialogResources();
             }
             DestroyWindow(window);
         }
@@ -3097,25 +3102,21 @@ public:
             // ORDER's OnCancel at 0x0040f517 confirms, then ends that dialog
             // with result one. Unlike every other game dialog, the caller at
             // 0x00402118 ignores the result and enters navigation state one.
-            // Preserve the original misleading "quit" prompt and continuation.
+            // Retain that fact in the parity table, but correct the native
+            // product's user-facing route so a confirmed quit actually exits.
             static_assert(
                 metaverse::LegacyDefaultRoutesFor(
                     metaverse::LegacyDialogRole::order
                 ).on_cancel ==
-                metaverse::LegacyDialogDefaultAction::
+                    metaverse::LegacyDialogDefaultAction::
                     confirm_then_continue_navigation
             );
-            if (MessageBoxW(
-                    window,
-                    L"Are you sure you want to quit the game now?",
-                    metaverse::kLegacyDialogCaption,
-                    static_cast<UINT>(
-                        metaverse::kLegacyConfirmMessageBoxStyle
-                    )
-                ) == IDYES) {
-                FinishOrderDialog(window);
-            }
-            return true;
+            static_assert(
+                metaverse::NativeDialogCancelActionFor(
+                    metaverse::LegacyDialogRole::order
+                ) == metaverse::LegacyDialogDefaultAction::confirm_exit
+            );
+            return RequestQuit(window);
         }
         return RequestQuit(window);
     }

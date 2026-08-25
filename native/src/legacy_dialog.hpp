@@ -75,6 +75,18 @@ LegacyDefaultRoutesFor(LegacyDialogRole role) {
     return {Action::no_op, Action::no_op};
 }
 
+// The recovered ORDER caller ignores its result-one Cancel and continues to
+// navigation even after the player confirms the prompt that explicitly says
+// "quit the game." Keep LegacyDefaultRoutesFor as the executable-parity
+// record, but make the native product's user-facing confirmation truthful.
+[[nodiscard]] inline constexpr LegacyDialogDefaultAction
+NativeDialogCancelActionFor(LegacyDialogRole role) {
+    if (role == LegacyDialogRole::order) {
+        return LegacyDialogDefaultAction::confirm_exit;
+    }
+    return LegacyDefaultRoutesFor(role).on_cancel;
+}
+
 enum class LegacyDialogActivationAction : std::uint8_t {
     none,
     repaint_controls,

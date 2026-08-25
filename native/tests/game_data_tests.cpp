@@ -110,6 +110,15 @@ void TestLegacyDialogs() {
                 Action::confirm_then_continue_navigation,
         "ORDER ignores default OK and confirmed Cancel continues to navigation"
     );
+    Check(
+        metaverse::NativeDialogCancelActionFor(Role::order) ==
+                Action::confirm_exit &&
+            metaverse::NativeDialogCancelActionFor(Role::navigation_hub) ==
+                Action::confirm_exit &&
+            metaverse::NativeDialogCancelActionFor(Role::profile) ==
+                Action::no_op,
+        "native ORDER confirmation exits while other Cancel routes retain parity"
+    );
     for (const Role role : {
              Role::cryo, Role::talent, Role::brains, Role::weight, Role::looks,
          }) {

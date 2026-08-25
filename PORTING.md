@@ -505,23 +505,27 @@ It blanks zero gauges and commits OK on release. The verified gauge helper
 also retains the previous bitmap wrapper at zero while hiding it beneath the
 base repaint, then destroys it on the next nonzero replacement. Its teardown
 also releases any retained wrapper before either continuing to ORDER or taking
-the confirmed-exit path. Arrow/OK press, release, and drag-out now synchronously
-repaint only their exact original rectangles. The verified stateful painter
-consumes base, OK, selected arrow, and current gauge dirty layers in original
-order rather than redrawing the whole screen. ORDER is now instruction-verified
-as a full dialog family too: its constructor warning-loads ACCEPT, TH10, and
-HAND in recovered order; C51 completes in place by synchronously loading each
-phrase row and moving HAND; its painter consumes base, ACCEPT, current COMMENT,
-HAND, TH, and current-rank layers in original order. Assignment paints the red
+the confirmed-exit path. Arrow/OK press, release, and drag-out synchronously
+invalidate their exact original rectangles. The verified stateful painter
+still consumes base, OK, selected-arrow, and current-gauge dirty flags in
+original order, while the fresh native back buffer reconstructs all retained
+layers so a partial repaint cannot replace the rest of the window with black.
+ORDER is instruction-verified as a full dialog family too: its constructor
+warning-loads ACCEPT, TH10, and HAND in recovered order; C51 completes in place
+by synchronously loading each phrase row and moving HAND; its dirty flags retain
+their recovered consumption order while each native back buffer restores the
+complete board. Assignment paints the red
 rank before TTn, replaces THn before committing the reversed document mapping,
 and assigns ACCEPT on release.
 ORDER's unique right-double-click handler also exits result-zero without a quit
 prompt; the caller proceeds into navigation with any partial ranking table. Its
 ordinary OnCancel first shows the recovered quit confirmation, but a Yes ends
 ORDER with result one and the same caller still proceeds into navigation; the
-native port preserves this original misleading-confirmation quirk. All three
-completion routes release ORDER-owned media before navigation without stopping
-the final asynchronous `TT1.WAV`.
+native port records this original quirk for parity but deliberately corrects
+the user-facing route: confirming that prompt now releases ORDER and exits.
+The separate right-double-click and completed-ranking routes still release
+ORDER-owned media before navigation without stopping the final asynchronous
+`TT1.WAV`.
 The three judging screens likewise use their exact meter/control rectangles and
 ripped ACCEPT/GONG/PENALTY/ROTATE pressed art. Port-only canvas help/status text
 has been removed. The native window caption now remains the executable's exact

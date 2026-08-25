@@ -8,6 +8,8 @@ All notable project changes are documented here.
   comment by rebuilding its retained layers in every double-buffered repaint.
 - Applied the same retained-layer correction to Weight arrow and gauge
   repaints.
+- Fixed ORDER's Escape confirmation so choosing Yes exits the game instead of
+  unexpectedly advancing to navigation; choosing No remains on the board.
 
 ## 1.0.0 - 2026-08-24
 
