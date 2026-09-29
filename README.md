@@ -18,7 +18,7 @@ not endorsed by or affiliated with the original creators or rights holders.
 ## Install a release
 
 1. Download and extract `ms-metaverse-native-v1.0.1-windows-x64.zip` from the
-   [GitHub Releases page](https://github.com/kandowontu/ms-metaverse-native/releases/latest).
+   [GitHub Releases page](https://github.com/kandowontu2/ms-metaverse-native/releases/latest).
 2. Extract Disc I and Disc II with the commands below.
 3. Put Disc I's `BMP`, `DAT`, `MOV`, and `WAV` folders in `assets` beside the
    EXE. Put the same four folders from Disc II in `assets2`.

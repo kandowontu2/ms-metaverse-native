@@ -1340,6 +1340,9 @@ int main(int argc, char** argv) {
               << " timers=60x" << interval_60_records
               << ",200x" << interval_200_records
               << " flag-combinations=" << motion_flag_counts.size() << '\n';
+    std::size_t simm_video_frames = 0;
+    std::size_t simm_referenced_frames = 0;
+    std::size_t simm_hit_timings = 0;
     for (std::int32_t simm = 0; simm <= 10; ++simm) {
         metaverse::MotionScript script;
         if (!metaverse::LoadMotionScript(
@@ -1349,6 +1352,22 @@ int main(int argc, char** argv) {
             )) {
             std::cerr << "FAIL D" << simm << " motion load: " << error << '\n';
             return 1;
+        }
+        const auto simm_video_path =
+            assets / "MOV/NAV" / ("T" + std::to_string(simm) + ".AVI");
+        VideoTimingSummary simm_timing;
+        if (!SummarizeVideoTiming(simm_video_path, simm_timing, error)) {
+            std::cerr << "FAIL T" << simm << " full video decode: " << error
+                      << '\n';
+            return 1;
+        }
+        simm_video_frames += simm_timing.frame_count;
+        std::set<std::int32_t> referenced_frames;
+        for (const auto& record : script.records) {
+            referenced_frames.insert(record.loop_frame);
+            if (record.terminal_frame > record.loop_frame) {
+                referenced_frames.insert(record.terminal_frame - 1);
+            }
         }
         metaverse::MotionPlayer motion;
         if (!motion.Reset(script, error, 3)) {
@@ -1360,11 +1379,15 @@ int main(int argc, char** argv) {
                       << " root record unexpectedly suppresses its hit target\n";
             return 1;
         }
+        referenced_frames.insert(motion.Frame());
         std::size_t ticks = 0;
         while (motion.Active() && ticks++ < 10'000) {
             if (!motion.Tick(error)) {
                 std::cerr << "FAIL D" << simm << " motion tick: " << error << '\n';
                 return 1;
+            }
+            if (motion.Active()) {
+                referenced_frames.insert(motion.Frame());
             }
         }
         if (!motion.Complete() || motion.ResultCode() != 0) {
@@ -1388,6 +1411,7 @@ int main(int argc, char** argv) {
             }
             return 1;
         }
+        const std::size_t escape_ticks = ticks;
         if (!motion.Reset(script, error, 3)) {
             std::cerr << "FAIL D" << simm << " hit-path reset: " << error << '\n';
             return 1;
@@ -1396,11 +1420,17 @@ int main(int argc, char** argv) {
         while (motion.Active() && ticks++ < 10'000) {
             if (!motion.IgnoresMouseInput()) {
                 motion.Hit(error);
+                if (motion.Active()) {
+                    referenced_frames.insert(motion.Frame());
+                }
             }
             if (!motion.Tick(error)) {
                 std::cerr << "FAIL D" << simm << " hit-path tick: " << error
                           << '\n';
                 return 1;
+            }
+            if (motion.Active()) {
+                referenced_frames.insert(motion.Frame());
             }
         }
         const std::int32_t expected_success_sentinel = simm == 0 ? 100 : 50;
@@ -1412,9 +1442,95 @@ int main(int argc, char** argv) {
                       << motion.ResultCode() << '\n';
             return 1;
         }
+        // A real click can land on any displayed root-path pose, not only the
+        // first one used by the immediate-hit check above. Exercise every
+        // such timing so contestant-specific trajectories and late record
+        // transitions cannot hide a crash behind the random encounter clock.
+        for (std::size_t hit_at = 0; hit_at < escape_ticks; ++hit_at) {
+            metaverse::MotionPlayer delayed_hit;
+            if (!delayed_hit.Reset(script, error, 3)) {
+                std::cerr << "FAIL D" << simm
+                          << " delayed-hit reset: " << error << '\n';
+                return 1;
+            }
+            std::size_t advance = 0;
+            while (delayed_hit.Active() && advance++ < hit_at) {
+                if (!delayed_hit.Tick(error)) {
+                    std::cerr << "FAIL D" << simm
+                              << " delayed-hit approach: " << error << '\n';
+                    return 1;
+                }
+            }
+            if (!delayed_hit.Active() || delayed_hit.IgnoresMouseInput()) {
+                continue;
+            }
+            error.clear();
+            if (!delayed_hit.Hit(error)) {
+                if (!error.empty()) {
+                    std::cerr << "FAIL D" << simm
+                              << " delayed hit at tick " << hit_at << ": "
+                              << error << '\n';
+                    return 1;
+                }
+                continue;
+            }
+            std::size_t completion_ticks = 0;
+            while (delayed_hit.Active() && completion_ticks++ < 10'000) {
+                if (!delayed_hit.IgnoresMouseInput()) {
+                    error.clear();
+                    if (!delayed_hit.Hit(error) && !error.empty()) {
+                        std::cerr << "FAIL D" << simm
+                                  << " delayed-hit follow-up at tick "
+                                  << hit_at << ": " << error << '\n';
+                        return 1;
+                    }
+                }
+                if (!delayed_hit.Tick(error)) {
+                    std::cerr << "FAIL D" << simm
+                              << " delayed-hit completion at tick " << hit_at
+                              << ": " << error << '\n';
+                    return 1;
+                }
+            }
+            if (!delayed_hit.Complete() ||
+                delayed_hit.ResultCode() != expected_success_sentinel) {
+                std::cerr << "FAIL D" << simm
+                          << " delayed-hit result at tick " << hit_at
+                          << ": " << delayed_hit.ResultCode() << '\n';
+                return 1;
+            }
+            ++simm_hit_timings;
+        }
+        metaverse::VideoDecoder simm_decoder;
+        if (!simm_decoder.Open(simm_video_path, error)) {
+            std::cerr << "FAIL T" << simm << " video reopen: " << error
+                      << '\n';
+            return 1;
+        }
+        for (const std::int32_t requested : referenced_frames) {
+            metaverse::VideoFrame frame;
+            bool ended = false;
+            if (requested < 0 || !simm_decoder.SeekFrame(
+                    requested, frame, ended, error
+                ) || ended || frame.frame_index != requested ||
+                frame.width <= 0 || frame.height <= 0 ||
+                frame.stride != frame.width * 4 ||
+                frame.bgra.size() !=
+                    static_cast<std::size_t>(frame.stride) *
+                        static_cast<std::size_t>(frame.height)) {
+                std::cerr << "FAIL D" << simm << "/T" << simm
+                          << " referenced frame " << requested << ": "
+                          << error << '\n';
+                return 1;
+            }
+            ++simm_referenced_frames;
+        }
     }
     std::cout << "OK DAT/NAV D0-D10 terminals escape=0 success-sentinels=100,50"
-                 " caller-award=5..15%-of-base\n";
+                 " caller-award=5..15%-of-base full-video-frames="
+              << simm_video_frames << " referenced-frames="
+              << simm_referenced_frames << " hit-timings="
+              << simm_hit_timings << '\n';
 
     if (argc == 3) {
         const std::filesystem::path assets2(argv[2]);
