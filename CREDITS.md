@@ -2,8 +2,8 @@
 
 ## Ms. Metaverse Native
 
-- Project direction, preservation, testing, and release: **kandowontu2**
-- Clean-room analysis and native implementation: **kandowontu2**, developed
+- Project direction, preservation, testing, and release: **kandowontu**
+- Clean-room analysis and native implementation: **kandowontu**, developed
   collaboratively with **OpenAI Codex**
 - FFmpeg: the FFmpeg project and its contributors
 - JPEG integer DCT routines within FFmpeg: the Independent JPEG Group (IJG)
